@@ -14,6 +14,7 @@ class QuotesSpider(scrapy.Spider):
     def __init__(self):
         self.driver = webdriver.Firefox()
         self.driver.implicitly_wait(15)
+        self.date = datetime(2019, 2, 28)
 
     def __parse_header(self, row):
         headers = []
@@ -46,31 +47,31 @@ class QuotesSpider(scrapy.Spider):
 
     def parse(self, response):
         self.driver.get(response.url)
-        
-        date = datetime(2019, 2, 28)
+
         count = 0
-        while True:
-            #prev = self.driver.find_element_by_xpath('//input[@id="btnPrev"]')
-            rows = response.xpath('//table[@id="tablepl"]//tr')
-            i = 0
-            for row in rows[1:]:
-                if i == 0:  # get names from second line
-                    headers = self.__parse_header(row)
-                else:
-                    dane = self.__parse_row(row, headers, date)
-                    yield dane
-                i += 1
-            date = date - timedelta(days=1)
-            count += 1         
-            try:
-                prev = self.driver.find_element_by_xpath('//input[@id="btnPrev"]')
+        #prev = self.driver.find_element_by_xpath('//input[@id="btnPrev"]')
+        rows = response.xpath('//table[@id="tablepl"]//tr')
+        i = 0
+        for row in rows[1:]:
+            if i == 0:  # get names from second line
+                headers = self.__parse_header(row)
+            else:
+                dane = self.__parse_row(row, headers, self.date)
+                yield dane
+            i += 1
+        self.date -= timedelta(days=1)
+        count += 1
+        try:
+            prev = self.driver.find_element_by_xpath('//input[@id="btnPrev"]')
                 #prev = WebDriverWait(self.driver, 30).until(
                 #    EC.element_to_be_clickable((By.ID, '//input[@id="btnPrev"]'))
                 #)
-                prev.click() 
+            prev.click()
                 #if count >= 5:
                 #    raise Exception('Loop end')
-            except:
-                break
-        self.driver.close()
+        except:
+            self.driver.close()
+            return
+        next_page = response.urljoin(self.driver.current_url)
+        yield scrapy.Request(next_page, callback=self.parse)
 
