@@ -1,6 +1,8 @@
 import scrapy
+import logging
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime, timedelta
@@ -25,10 +27,6 @@ class QuotesSpider(scrapy.Spider):
                 headers.append(text)
             else:
                 headers.append(title)
-#            for h in headers:
-#                yield {
-#                    "b": h
-#                }
         return headers
 
     def __parse_row(self, row, headers, date):
@@ -47,9 +45,7 @@ class QuotesSpider(scrapy.Spider):
 
     def parse(self, response):
         self.driver.get(response.url)
-
-        count = 0
-        #prev = self.driver.find_element_by_xpath('//input[@id="btnPrev"]')
+       # logging.info('Parse function called on %s', response.url)
         rows = response.xpath('//table[@id="tablepl"]//tr')
         i = 0
         for row in rows[1:]:
@@ -60,16 +56,12 @@ class QuotesSpider(scrapy.Spider):
                 yield dane
             i += 1
         self.date -= timedelta(days=1)
-        count += 1
         try:
-            prev = self.driver.find_element_by_xpath('//input[@id="btnPrev"]')
-                #prev = WebDriverWait(self.driver, 30).until(
-                #    EC.element_to_be_clickable((By.ID, '//input[@id="btnPrev"]'))
-                #)
+            prev = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located((By.XPATH, '//input[@id="btnPrev"]')));
             prev.click()
-                #if count >= 5:
-                #    raise Exception('Loop end')
         except:
+            logging.warning("Failed to click prev on site %s", response.url)
+            logging.info("Failed to click prev, info log ")
             self.driver.close()
             return
         next_page = response.urljoin(self.driver.current_url)
